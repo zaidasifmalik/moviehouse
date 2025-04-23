@@ -13,7 +13,7 @@ export async function getServerSideProps({ params }) {
   const slug = params.slug || [];
   return {
     props: {
-      data,
+      data: slug,
     },
   };
 }
