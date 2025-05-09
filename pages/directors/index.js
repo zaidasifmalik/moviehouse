@@ -1,38 +1,37 @@
+import { Box, Heading, Text, List, ListItem } from "@chakra-ui/react";
 import useSWR from "swr";
-import { getDirectors, getMoviesByDirector } from "../../utils/data";
 
-const fetcher = async () => {
-  const directors = await getDirectors();
-  const directorsWithMovies = await Promise.all(
-    directors.map(async (director) => {
-      const movies = await getMoviesByDirector(director.id);
-      return { ...director, movies };
-    })
-  );
-  return directorsWithMovies;
-};
+const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function Directors() {
-  const { data: directors, error } = useSWR("directors", fetcher);
+  const { data: directors, error } = useSWR("/api/directors", fetcher);
 
-  if (error) return <div>Error loading directors</div>;
-  if (!directors) return <div>Loading...</div>;
+  if (error) return <Box>Error loading directors</Box>;
+  if (!directors) return <Box>Loading...</Box>;
 
   return (
-    <div>
-      <h1>Directors</h1>
+    <Box p={4}>
+      <Heading mb={6}>Directors</Heading>
       {directors.map((director) => (
-        <div key={director.id}>
-          <h2>{director.name}</h2>
-          <p>{director.biography}</p>
-          <h3>Movies Directed</h3>
-          <ul>
+        <Box
+          key={director._id}
+          mb={8}
+          p={4}
+          borderWidth="1px"
+          borderRadius="lg"
+        >
+          <Heading size="md">{director.name}</Heading>
+          <Text mt={2}>{director.biography}</Text>
+          <Heading size="sm" mt={4}>
+            Movies Directed
+          </Heading>
+          <List spacing={2} mt={2}>
             {director.movies.map((movie) => (
-              <li key={movie.id}>{movie.title}</li>
+              <ListItem key={movie._id}>{movie.title}</ListItem>
             ))}
-          </ul>
-        </div>
+          </List>
+        </Box>
       ))}
-    </div>
+    </Box>
   );
 }

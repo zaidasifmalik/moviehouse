@@ -1,47 +1,54 @@
-import Link from "next/link";
 import { useState } from "react";
-import { getMovies, getGenres } from "../../utils/data";
+import { Box, Heading, Input, Select, SimpleGrid } from "@chakra-ui/react";
+import useSWR from "swr";
+import MovieCard from "../../components/MovieCard";
 
-export default function Movies({ movies, genres }) {
+const fetcher = (url) => fetch(url).then((res) => res.json());
+
+export default function Movies() {
+  const { data: movies, error: moviesError } = useSWR("/api/movies", fetcher);
+  const { data: genres, error: genresError } = useSWR("/api/genres", fetcher);
   const [selectedGenre, setSelectedGenre] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredMovies = selectedGenre
-    ? movies.filter((movie) => movie.genreId === selectedGenre)
-    : movies;
+  if (moviesError || genresError) return <Box>Error loading data</Box>;
+  if (!movies || !genres) return <Box>Loading...</Box>;
+
+  const filteredMovies = movies.filter((movie) => {
+    const matchesGenre = selectedGenre ? movie.genreId === selectedGenre : true;
+    const matchesSearch = movie.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesGenre && matchesSearch;
+  });
 
   return (
-    <div>
-      <h1>All Movies</h1>
-      <div>
-        <label>Filter by Genre: </label>
-        <select
-          onChange={(e) => setSelectedGenre(e.target.value)}
+    <Box p={4}>
+      <Heading mb={6}>All Movies</Heading>
+      <Box mb={4}>
+        <Input
+          placeholder="Search movies..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          mb={4}
+        />
+        <Select
+          placeholder="Filter by Genre"
           value={selectedGenre}
+          onChange={(e) => setSelectedGenre(e.target.value)}
         >
-          <option value="">All Genres</option>
           {genres.map((genre) => (
-            <option key={genre.id} value={genre.id}>
+            <option key={genre._id} value={genre._id}>
               {genre.name}
             </option>
           ))}
-        </select>
-      </div>
-      <ul>
+        </Select>
+      </Box>
+      <SimpleGrid columns={{ sm: 1, md: 2, lg: 3 }} spacing={6}>
         {filteredMovies.map((movie) => (
-          <li key={movie.id}>
-            <Link href={`/movies/${movie.id}`}>{movie.title}</Link>
-          </li>
+          <MovieCard key={movie._id} movie={movie} />
         ))}
-      </ul>
-    </div>
+      </SimpleGrid>
+    </Box>
   );
-}
-
-export async function getStaticProps() {
-  const movies = await getMovies();
-  const genres = await getGenres();
-  return {
-    props: { movies, genres },
-    revalidate: 60,
-  };
 }

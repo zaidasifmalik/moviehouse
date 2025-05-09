@@ -1,54 +1,50 @@
+import { Box, Heading, Text, Button } from "@chakra-ui/react";
+import useSWR from "swr";
+import { useRouter } from "next/router";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import {
-  getMovieById,
-  getMovies,
-  getDirectorById,
-  getGenreById,
-} from "../../../utils/data";
 
-export default function MovieDetail({ movie, director, genre }) {
-  if (!movie) {
-    notFound();
+const fetcher = (url) => fetch(url).then((res) => res.json());
+
+export default function MovieDetail() {
+  const router = useRouter();
+  const { id } = router.query;
+
+  // Fetch movie data
+  const { data: movie, error: movieError } = useSWR(
+    id ? `/api/movies/${id}` : null,
+    fetcher
+  );
+
+  // Only fetch director and genre if movie data is available
+  const { data: director, error: directorError } = useSWR(
+    movie && movie.directorId ? `/api/directors/${movie.directorId}` : null,
+    fetcher
+  );
+  const { data: genre, error: genreError } = useSWR(
+    movie && movie.genreId ? `/api/genres/${movie.genreId}` : null,
+    fetcher
+  );
+
+  if (movieError || directorError || genreError) {
+    return <Box>Error loading movie details</Box>;
+  }
+  if (!movie || !director || !genre) {
+    return <Box>Loading...</Box>;
   }
 
   return (
-    <div>
-      <h1>{movie.title}</h1>
-      <p>{movie.description}</p>
-      <p>
+    <Box p={4}>
+      <Heading>{movie.title}</Heading>
+      <Text mt={2}>{movie.description}</Text>
+      <Text mt={2}>
         Director:{" "}
-        <Link href={`/movies/${movie.id}/director`}>{director.name}</Link>
-      </p>
-      <p>Release Year: {movie.releaseYear}</p>
-      <p>Genre: {genre.name}</p>
-      <p>Rating: {movie.rating}</p>
-    </div>
+        <Link href={`/directors/${movie.directorId}`}>
+          <Button variant="link">{director.name}</Button>
+        </Link>
+      </Text>
+      <Text mt={2}>Release Year: {movie.releaseYear}</Text>
+      <Text mt={2}>Genre: {genre.name}</Text>
+      <Text mt={2}>Rating: {movie.rating}</Text>
+    </Box>
   );
-}
-
-export async function getStaticPaths() {
-  const movies = await getMovies();
-  const paths = movies.map((movie) => ({
-    params: { id: movie.id },
-  }));
-
-  return {
-    paths,
-    fallback: "blocking",
-  };
-}
-
-export async function getStaticProps({ params }) {
-  const movie = await getMovieById(params.id);
-  if (!movie) {
-    return { notFound: true };
-  }
-  const director = await getDirectorById(movie.directorId);
-  const genre = await getGenreById(movie.genreId);
-
-  return {
-    props: { movie, director, genre },
-    revalidate: 60,
-  };
 }

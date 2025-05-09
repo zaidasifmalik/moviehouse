@@ -1,47 +1,32 @@
-import {
-  getMovieById,
-  getDirectorById,
-  getMoviesByDirector,
-  getMovies,
-} from "../../../utils/data";
+import { Box, Heading, Text, List, ListItem } from "@chakra-ui/react";
+import useSWR from "swr";
+import { useRouter } from "next/router";
 
-export default function Director({ director, movies }) {
-  return (
-    <div>
-      <h1>{director.name}</h1>
-      <p>{director.biography}</p>
-      <h2>Movies Directed</h2>
-      <ul>
-        {movies.map((movie) => (
-          <li key={movie.id}>{movie.title}</li>
-        ))}
-      </ul>
-    </div>
+const fetcher = (url) => fetch(url).then((res) => res.json());
+
+export default function Director() {
+  const router = useRouter();
+  const { id } = router.query;
+  const { data: director, error } = useSWR(
+    id ? `/api/directors/${id}` : null,
+    fetcher
   );
-}
 
-export async function getStaticPaths() {
-  const movies = await getMovies();
-  const paths = movies.map((movie) => ({
-    params: { id: movie.id },
-  }));
+  if (error) return <Box>Error loading director</Box>;
+  if (!director) return <Box>Loading...</Box>;
 
-  return {
-    paths,
-    fallback: "blocking",
-  };
-}
-
-export async function getStaticProps({ params }) {
-  const movie = await getMovieById(params.id);
-  if (!movie) {
-    return { notFound: true };
-  }
-  const director = await getDirectorById(movie.directorId);
-  const movies = await getMoviesByDirector(movie.directorId);
-
-  return {
-    props: { director, movies },
-    revalidate: 60,
-  };
+  return (
+    <Box p={4}>
+      <Heading>{director.name}</Heading>
+      <Text mt={2}>{director.biography}</Text>
+      <Heading size="md" mt={4}>
+        Movies Directed
+      </Heading>
+      <List spacing={2} mt={2}>
+        {director.movies.map((movie) => (
+          <ListItem key={movie._id}>{movie.title}</ListItem>
+        ))}
+      </List>
+    </Box>
+  );
 }

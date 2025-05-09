@@ -1,30 +1,30 @@
-import { getGenreById, getMoviesByGenre } from "../../utils/data";
+import { Box, Heading, SimpleGrid } from "@chakra-ui/react";
+import useSWR from "swr";
+import { useRouter } from "next/router";
+import MovieCard from "../../components/MovieCard";
 
-export default function GenreMovies({ genre, movies }) {
-  if (!genre) {
-    return <div>Genre not found</div>;
-  }
+const fetcher = (url) => fetch(url).then((res) => res.json());
+
+export default function GenreMovies() {
+  const router = useRouter();
+  const { id } = router.query;
+  const { data: genre } = useSWR(id ? `/api/genres/${id}` : null, fetcher);
+  const { data: movies, error } = useSWR(
+    id ? `/api/genres/${id}/movies` : null,
+    fetcher
+  );
+
+  if (error) return <Box>Error loading movies</Box>;
+  if (!genre || !movies) return <Box>Loading...</Box>;
 
   return (
-    <div>
-      <h1>{genre.name} Movies</h1>
-      <ul>
+    <Box p={4}>
+      <Heading mb={6}>{genre.name} Movies</Heading>
+      <SimpleGrid columns={{ sm: 1, md: 2, lg: 3 }} spacing={6}>
         {movies.map((movie) => (
-          <li key={movie.id}>{movie.title}</li>
+          <MovieCard key={movie._id} movie={movie} />
         ))}
-      </ul>
-    </div>
+      </SimpleGrid>
+    </Box>
   );
-}
-
-export async function getServerSideProps({ params }) {
-  const genre = await getGenreById(params.id);
-  if (!genre) {
-    return { notFound: true };
-  }
-  const movies = await getMoviesByGenre(params.id);
-
-  return {
-    props: { genre, movies },
-  };
 }
